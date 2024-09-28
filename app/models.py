@@ -10,6 +10,7 @@ class ReservationProduct(Base):
     __tablename__ = 'reservation_product'
     """ промежуточная таблица для связи продуктов и резерва """
     reservation_id: Mapped[int] = mapped_column(ForeignKey('reservation.id'), primary_key=True)
+    reservation: Mapped['Reservation'] = relationship('Reservation', back_populates='reserve_products')
     product_id: Mapped[int] = mapped_column(ForeignKey('product.id'), primary_key=True)
     product: Mapped['Product'] = relationship('Product', lazy='joined')
     quantity: Mapped[int] = mapped_column(nullable=False, comment='Количество товаров в резерве')
@@ -34,5 +35,5 @@ class Product(Base):
     name: Mapped[str] = mapped_column(nullable=False, comment='название продукта')
     quantity: Mapped[int] = mapped_column(nullable=False, default=0, comment='количество продукта,'
                                                                              ' доступное для покупки или резерва')
-    reservations: Mapped[list['Reservation']] = relationship('Reservation', back_populates='products',
+    reservations: Mapped[list['Reservation']] = relationship('Reservation',
                                                              secondary='reservation_product', lazy='select')
