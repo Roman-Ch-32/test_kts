@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:14
+    ports:
+      - 5433:5432
+    restart: always
+    env_file:
+      - ./.env
+
+  app:
+    build: .
+    ports:
+      - 8001:8000
+    volumes:
+      - ./:/module
+    env_file:
+      - ./.env
+    command: sh ./start.sh
+    restart: always
+    depends_on:
+      - postgres

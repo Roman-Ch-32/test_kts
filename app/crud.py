@@ -43,7 +43,10 @@ class CRUDBase(CrudInit):
         ans = []
         for data in self.list_data:
             self.data = data
-            ans.append(await self.create())
+            try:
+                ans.append(await self.create())
+            except:
+                continue
         return ans
 
     async def create_to_many(self):

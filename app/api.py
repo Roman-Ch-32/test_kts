@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db import get_async_session
-from schemas import ReservationAnswerSchema, ReservationAddProductSchema, ReservationGetSchema
-from services import ReservationProductService, ReservationService
+from schemas import ReservationAnswerSchema, ReservationAddProductSchema, ReservationGetSchema, ProductAnswerSchema, \
+    ProductAddSchema
+from services import ReservationProductService, ReservationService, ProductService
 
 router = APIRouter()
 
@@ -22,3 +23,9 @@ async def add_product_to_reserve(reservation_id: str,
     raise HTTPException(status_code=404, detail="Reservation not found")
 
 
+@router.post('/product', response_model=ProductAnswerSchema)
+async def add_products(data: ProductAddSchema = Body(...),
+                       session: AsyncSession = Depends(get_async_session)) -> ProductAnswerSchema:
+    if ans := await ProductService(session=session).create_list(data=data):
+        return ans
+    raise HTTPException(status_code=404, detail="Reservation not found")

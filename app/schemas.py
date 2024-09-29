@@ -34,9 +34,14 @@ class ReservationProductUpdateSchema(ReservationProductCreateSchema):
 
 class ProductSchema(BaseModel):
     """ схема продукта """
-    id: str
+    id: str | int | None = None
     name: str
     quantity: int
+
+
+class ProductAddSchema(BaseModel):
+    """ схема продукта """
+    products: list[ProductSchema]
 
 
 class ReservationCreateSchema(BaseModel):
@@ -45,6 +50,7 @@ class ReservationCreateSchema(BaseModel):
 
 
 class ReservationGetSchema(ReservationCreateSchema):
+    id: int
     reserve_products: list[ReservationProductGetSchema]
 
 
@@ -74,3 +80,8 @@ class DateFilter(BaseModel):
 
 class BaseSetId(BaseModel):
     id: list[int] | None = None
+
+
+class ProductAnswerSchema(BaseModel):
+    status: str
+    message: str

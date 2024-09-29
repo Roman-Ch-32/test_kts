@@ -7,7 +7,8 @@ from crud import CRUDBase
 from models import ReservationProduct, Reservation, Product
 from schemas import (ReservationAnswerSchema, ReservationAddProductSchema, ModelFilter,
                      ReservationCreateSchema, ReservationFilter, ProductSchema,
-                     ReservationProductUpdateSchema, ReservationProductCreateSchema, ReservationGetSchema)
+                     ReservationProductUpdateSchema, ReservationProductCreateSchema, ReservationGetSchema,
+                     ProductAnswerSchema, ProductAddSchema)
 
 
 @dataclass
@@ -22,12 +23,14 @@ class ReservationService(BaseService):
         result = CRUDBase(session=self.session, model=Reservation)
         result.filter = ReservationFilter(reservation_id=pk)
         reserve = await result.get_one()
-        ans = ReservationGetSchema(**reserve.__dict__) if reserve else None
-        return ans
+        return reserve
 
     async def create(self, data):
         result = CRUDBase(session=self.session, model=Reservation, data=data)
+        result.data.status = 'new'
         reserve = await result.create()
+        await self.session.commit()
+        await self.session.refresh(reserve)
         return reserve
 
 
@@ -43,6 +46,18 @@ class ProductService(BaseService):
         product = await result.get_one()
         return product
 
+    async def create_list(self, data) -> ProductAnswerSchema:
+        result = CRUDBase(session=self.session, model=Product, list_data=data.products)
+        products = await result.create_list()
+        print(products, type(products))
+        if products:
+            await self.session.commit()
+            return ProductAnswerSchema(status='success',
+                                       message=f'{len(products)} products created from {len(data.products)}')
+        await self.session.rollback()
+        return ProductAnswerSchema(status='error',
+                                   message=f'{products} products created from {len(data.products)}')
+
     async def update(self, data: ProductSchema) -> Product:
         result = CRUDBase(session=self.session, model=Product, data=data)
         product = await result.update()
@@ -53,6 +68,7 @@ class ReservationProductService(BaseService):
     """ Сервис для работы с данными и бизнес-логики для модели ReservationProduct """
 
     async def add_product(self, data: ReservationAddProductSchema) -> ReservationAnswerSchema:
+        data.timestamp = data.timestamp.replace(tzinfo=None)
         result = CRUDBase(session=self.session, model=ReservationProduct)
         """ проверяем существование продукта и его доступность, вычитаем резерв """
         product = await ProductService(session=self.session).find_one(pk=data.product_id)
@@ -69,7 +85,10 @@ class ReservationProductService(BaseService):
             если есть, то обновлем количество товара в резерве,
             возвращаем результат
         """
-        reservation_product = next((item['product_id'] == product.id for item in reservation.data), None)
+        reservation_product = None
+        for item in reservation.reserve_products if reservation.reserve_products else []:
+            if item.product_id == product.id:
+                reservation_product = item
         if reservation_product:
             result.data = ReservationProductUpdateSchema(**reservation_product.__dict__)
             result.data.quantity += data.quantity
