@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud import CRUDBase
-from app.models import ReservationProduct, Reservation, Product
-from app.schemas import (ReservationAnswerSchema, ReservationAddProductSchema, ModelFilter,
-                         ReservationCreateSchema, ReservationFilter, ProductSchema, ReservationProductFilter,
-                         ReservationProductUpdateSchema, ReservationProductCreateSchema, ReservationGetSchema)
+from crud import CRUDBase
+from models import ReservationProduct, Reservation, Product
+from schemas import (ReservationAnswerSchema, ReservationAddProductSchema, ModelFilter,
+                     ReservationCreateSchema, ReservationFilter, ProductSchema,
+                     ReservationProductUpdateSchema, ReservationProductCreateSchema, ReservationGetSchema)
 
 
 @dataclass
@@ -18,11 +18,11 @@ class BaseService:
 class ReservationService(BaseService):
     """ Сервис для работы с данными и бизнес-логики для модели Reservation """
 
-    async def find_one(self, pk: str) -> ReservationGetSchema:
+    async def find_one(self, pk: str) -> ReservationGetSchema | None:
         result = CRUDBase(session=self.session, model=Reservation)
         result.filter = ReservationFilter(reservation_id=pk)
         reserve = await result.get_one()
-        ans = ReservationGetSchema(**reserve.__dict__)
+        ans = ReservationGetSchema(**reserve.__dict__) if reserve else None
         return ans
 
     async def create(self, data):
@@ -34,9 +34,11 @@ class ReservationService(BaseService):
 class ProductService(BaseService):
     """ Сервис для работы с данными и бизнес-логики для модели Product """
 
-    async def find_one(self, pk: int | str) -> Product:
+    async def find_one(self, pk: int | str) -> Product | None:
         result = CRUDBase(session=self.session, model=Product)
-        pk = int(pk) if isinstance(pk, str) and pk.isdigit() else pk
+        pk = int(pk) if isinstance(pk, str) and pk.isdigit() else pk if isinstance(pk, int) else None
+        if not pk:
+            return None
         result.filter = ModelFilter(id=pk)
         product = await result.get_one()
         return product

@@ -33,7 +33,7 @@ class CrudInit:
 class CRUDBase(CrudInit):
 
     async def create(self):
-        data = self.data if isinstance(self.data, dict) else self.data.dict()
+        data = self.data if isinstance(self.data, dict) else self.data.model_dump()
         data.pop('id') if data.get('id') is None and 'id' in data else None
         sql = insert(self.model).values(**data).returning(self.model)
         result = (await self.session.execute(sql)).scalars().unique().one_or_none()
@@ -47,14 +47,14 @@ class CRUDBase(CrudInit):
         return ans
 
     async def create_to_many(self):
-        data = self.data_to_many if isinstance(self.data_to_many, dict) else self.data_to_many.dict()
+        data = self.data_to_many if isinstance(self.data_to_many, dict) else self.data_to_many.model_dump()
         data.pop('id') if data.get('id') is None else None
         sql = insert(self.model_to_many).values(**data).returning(self.model_to_many)
         result = (await self.session.execute(sql)).scalars().unique().one_or_none()
         return result
 
     async def update(self):
-        sql = update(self.model).where(self.model.id == self.data.id).values(**self.data.dict()).returning(self.model)
+        sql = update(self.model).where(self.model.id == self.data.id).values(**self.data.model_dump()).returning(self.model)
         result = (await self.session.execute(sql)).scalars().unique().one_or_none()
         return result
 
@@ -107,37 +107,37 @@ class CRUDBase(CrudInit):
 
     def _filter(self):
         model_filter = [getattr(self.model, field) == value
-                        for field, value in self.filter.dict().items() if
+                        for field, value in self.filter.model_dump().items() if
                         field in self.model.__dict__ and value is not None] if self.filter else []
         return model_filter
 
     def _filter_f_k(self):
         model_filter = [getattr(self.model_f_k, field) == value
-                        for field, value in self.filter_f_k.dict().items() if
+                        for field, value in self.filter_f_k.model_dump().items() if
                         field in self.model_f_k.__dict__ and value is not None] if self.filter_f_k else []
         return model_filter
 
     def _and_date_filter(self):
         model_filter = [getattr(self.model, field).between(value)
-                        for field, value in self.date_filter.dict().items() if
+                        for field, value in self.date_filter.model_dump().items() if
                         field in self.model.__dict__ and value is not None] if self.date_filter else []
         return model_filter
 
     def _filter_like(self):
         model_filter = [getattr(self.model, field).ilike(f"%{value}%")
-                        for field, value in self.filter.dict().items() if
+                        for field, value in self.filter.model_dump().items() if
                         field in self.model.__dict__ and value is not None] if self.filter else []
         return model_filter
 
     def _filter_to_many(self):
         model_filter = [getattr(self.model_to_many, field) == value for field, value in
-                        self.filter_to_many.dict().items() if field in
+                        self.filter_to_many.model_dump().items() if field in
                         self.model_to_many.__dict__ and value is not None] if self.filter_to_many else []
         return model_filter
 
     def _filter_in(self):
         model_filter = [getattr(self.model, field).in_(value) for field, value in
-                        self.set_id.dict().items() if field in
+                        self.set_id.model_dump().items() if field in
                         self.model.__dict__ and value is not None]
         return model_filter
 

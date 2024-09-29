@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -9,14 +9,14 @@ class ReservationAddProductSchema(BaseModel):
     reservation_id: str
     product_id: str
     quantity: int
-    timestamp: datetime
+    timestamp: datetime.datetime
 
 
 class ReservationProductGetSchema(BaseModel):
     """ схема показа резерва продукта """
     product: 'ProductSchema'
     quantity: int
-    timestamp: datetime
+    timestamp: datetime.datetime
 
 
 class ReservationProductCreateSchema(BaseModel):
@@ -24,7 +24,7 @@ class ReservationProductCreateSchema(BaseModel):
     reservation_id: int
     product_id: int
     quantity: int
-    timestamp: datetime
+    timestamp: datetime.datetime
 
 
 class ReservationProductUpdateSchema(ReservationProductCreateSchema):

@@ -1,17 +1,17 @@
 import datetime
 
-from sqlalchemy import ForeignKey, Integer
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db import Base
+from db import Base
 
 
 class ReservationProduct(Base):
     __tablename__ = 'reservation_product'
     """ промежуточная таблица для связи продуктов и резерва """
-    reservation_id: Mapped[int] = mapped_column(ForeignKey('reservation.id'), primary_key=True)
+    reservation_id: Mapped[int] = mapped_column(ForeignKey('reservation.id'))
     reservation: Mapped['Reservation'] = relationship('Reservation', back_populates='reserve_products')
-    product_id: Mapped[int] = mapped_column(ForeignKey('product.id'), primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey('product.id'))
     product: Mapped['Product'] = relationship('Product', lazy='joined')
     quantity: Mapped[int] = mapped_column(nullable=False, comment='Количество товаров в резерве')
     timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now())
@@ -25,7 +25,7 @@ class Reservation(Base):
     """
     reservation_id: Mapped[str] = mapped_column(nullable=False)
     reserve_products: Mapped[list['ReservationProduct']] = relationship('ReservationProduct',
-                                                                        lazy='joined')
+                                                                        lazy='joined', back_populates='reservation')
     status: Mapped['str'] = mapped_column(nullable=False, comment='статус', default='new')
 
 
@@ -35,5 +35,9 @@ class Product(Base):
     name: Mapped[str] = mapped_column(nullable=False, comment='название продукта')
     quantity: Mapped[int] = mapped_column(nullable=False, default=0, comment='количество продукта,'
                                                                              ' доступное для покупки или резерва')
-    reservations: Mapped[list['Reservation']] = relationship('Reservation',
-                                                             secondary='reservation_product', lazy='select')
+    # reservations: Mapped[list['Reservation']] = relationship('Reservation',
+    #                                                          secondary='reservation_product',
+    #                                                          lazy='select')
+    reservations_products: Mapped[list['ReservationProduct']] = relationship('ReservationProduct',
+                                                                             back_populates='product',
+                                                                             lazy='select')
