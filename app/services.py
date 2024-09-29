@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,7 +9,7 @@ from models import ReservationProduct, Reservation, Product
 from schemas import (ReservationAnswerSchema, ReservationAddProductSchema, ModelFilter,
                      ReservationCreateSchema, ReservationFilter, ProductSchema,
                      ReservationProductUpdateSchema, ReservationProductCreateSchema, ReservationGetSchema,
-                     ProductAnswerSchema, ProductAddSchema)
+                     ProductAnswerSchema)
 
 
 @dataclass
@@ -23,6 +24,7 @@ class ReservationService(BaseService):
         result = CRUDBase(session=self.session, model=Reservation)
         result.filter = ReservationFilter(reservation_id=pk)
         reserve = await result.get_one()
+        logging.info('получение резерва')
         return reserve
 
     async def create(self, data):
@@ -31,6 +33,7 @@ class ReservationService(BaseService):
         reserve = await result.create()
         await self.session.commit()
         await self.session.refresh(reserve)
+        logging.info('создание резерва')
         return reserve
 
 
@@ -44,6 +47,7 @@ class ProductService(BaseService):
             return None
         result.filter = ModelFilter(id=pk)
         product = await result.get_one()
+        logging.info('получение продукта')
         return product
 
     async def create_list(self, data) -> ProductAnswerSchema:
@@ -51,16 +55,19 @@ class ProductService(BaseService):
         products = await result.create_list()
         print(products, type(products))
         if products:
+            logging.info('создание пачки продуктов')
             await self.session.commit()
             return ProductAnswerSchema(status='success',
                                        message=f'{len(products)} products created from {len(data.products)}')
         await self.session.rollback()
+        logging.error('не удалось создать ни одного продукта')
         return ProductAnswerSchema(status='error',
                                    message=f'{products} products created from {len(data.products)}')
 
     async def update(self, data: ProductSchema) -> Product:
         result = CRUDBase(session=self.session, model=Product, data=data)
         product = await result.update()
+        logging.info('обновление продукта')
         return product
 
 
@@ -75,16 +82,22 @@ class ReservationProductService(BaseService):
         if not product or product.quantity < data.quantity:
             return await self._bad_ans(reservation_id=data.reservation_id)
         product.quantity -= data.quantity
-        """ проверяем существует ли такой резерв на нашем складе,
+
+        logging.info(
+            """ проверяем существует ли такой резерв на нашем складе,
             если нет, то создаём
-        """
+            """)
+
         reservation = ReservationService(session=self.session)
         reservation = (await reservation.find_one(pk=data.reservation_id) or
                        await reservation.create(data=ReservationCreateSchema(reservation_id=data.reservation_id)))
-        """ проверяем, если ли уже такой товар в таком резерве,
+
+        logging.info(
+            """ проверяем, если ли уже такой товар в таком резерве,
             если есть, то обновлем количество товара в резерве,
             возвращаем результат
-        """
+            """)
+
         reservation_product = None
         for item in reservation.reserve_products if reservation.reserve_products else []:
             if item.product_id == product.id:
@@ -93,40 +106,57 @@ class ReservationProductService(BaseService):
             result.data = ReservationProductUpdateSchema(**reservation_product.__dict__)
             result.data.quantity += data.quantity
             try:
-                """ Производим транзакцию, добавляем резерв и меняем доступное количество товаров """
+
+                logging.info(
+                    """ Производим транзакцию, добавляем резерв и меняем доступное количество товаров """
+                    )
+
                 await result.update()
                 await ProductService(session=self.session).update(data=ProductSchema(**product.__dict__))
                 await self.session.commit()
             except SQLAlchemyError as e:
+                logging.error(f'{e}  \n неудача в алхимии')
                 print(e)
                 await self.session.rollback()
                 return await self._bad_ans(reservation_id=data.reservation_id)
+            logging.info('обновление, всё ок')
             return await self._good_ans(reservation_id=data.reservation_id)
-        """ если такого товара в таком резерве нет,
+
+        logging.info(
+            """ 
+            если такого товара в таком резерве нет,
             то создаём новую запись о том, что мы добавили товар в этот резерв.
             т.к. в теории этим же сервисом мы можем и уменьшать количество товара в резерве,
-             послав отрицательное значение, проверяем тут добавляемое количество товара на отрицательное значение
-        """
+            послав отрицательное значение, проверяем тут добавляемое количество товара на отрицательное значение
+            """
+            )
+
         if data.quantity < 0:
+            logging.error("резерв отрицательный")
             return await self._bad_ans(reservation_id=data.reservation_id)
         result.data = ReservationProductCreateSchema(reservation_id=reservation.id,
                                                      product_id=product.id,
                                                      quantity=data.quantity,
                                                      timestamp=data.timestamp)
         try:
-            """ Производим транзакцию, добавляем резерв и меняем доступное количество товаров """
+            logging.info(""" Производим транзакцию, добавляем резерв и меняем доступное количество товаров """)
+
             await result.create()
             await ProductService(session=self.session).update(data=ProductSchema(**product.__dict__))
             await self.session.commit()
         except SQLAlchemyError as e:
+            logging.error(f'{e}  \n неудача в алхимии')
             print(e)
             await self.session.rollback()
             return await self._bad_ans(reservation_id=data.reservation_id)
+        logging.info('новая запись, всё ок')
         return await self._good_ans(reservation_id=data.reservation_id)
 
     @staticmethod
     async def _good_ans(reservation_id) -> ReservationAnswerSchema:
-        """ удачный ответ от бд """
+
+        logging.info(""" удачный ответ от бд """)
+
         return ReservationAnswerSchema(status='success',
                                        message='Reservation completed successfully.',
                                        reservation_id=f'{reservation_id}')
@@ -134,6 +164,9 @@ class ReservationProductService(BaseService):
     @staticmethod
     async def _bad_ans(reservation_id) -> ReservationAnswerSchema:
         """ неудачный ответ от бд """
+
+        logging.error(""" неудачный ответ от бд """)
+
         return ReservationAnswerSchema(status='error',
                                        message='Not enough stock available.',
                                        reservation_id=f'{reservation_id}')
