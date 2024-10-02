@@ -5,5 +5,5 @@ WORKDIR module
 
 COPY . .
 
-RUN pip install -r req.txt
+RUN pip install -r requirements.txt
 

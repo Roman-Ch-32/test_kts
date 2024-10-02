@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.9, pytest-8.3.3, pluggy-1.5.0
+rootdir: /home/roman/PycharmProjects/test_for_kts
+configfile: pytest.ini
+plugins: anyio-4.6.0, cov-5.0.0, Faker-30.0.0
+collected 8 items
+
+tests/test_api.py ........                                               [100%]
+
+---------- coverage: platform linux, python 3.11.9-final-0 -----------
+Name                         Stmts   Miss  Cover
+------------------------------------------------
+app/__init__.py                  0      0   100%
+app/api.py                      25      6    76%
+app/crud.py                    105     45    57%
+app/db.py                       14      0   100%
+app/main.py                      6      0   100%
+app/migrations/__init__.py       0      0   100%
+app/migrations/env.py           33     33     0%
+app/models.py                   25      0   100%
+app/schemas.py                  50      0   100%
+app/services.py                108     65    40%
+app/settings.py                  7      0   100%
+------------------------------------------------
+TOTAL                          373    149    60%
+
+
+============================== 8 passed in 2.23s ===============================
